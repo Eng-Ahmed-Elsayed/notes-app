@@ -10,12 +10,10 @@ import { notesCollection, db } from "./firebase"
 export default function App() {
     const [notes, setNotes] = React.useState([])
     const [currentNoteId, setCurrentNoteId] = React.useState("")
+    const [tempNoteText, setTempNoteText] = React.useState("")
+    
     const currentNote = notes.find(note => note.id === currentNoteId) || notes[0]
-    // const sortedNotes = notes.sort((n1, n2) => (n1.updated < n2.updated) ? 1 
-    // : (n1.updated > n2.updated) ? -1 
-    // : 0
-    // )
-    const sortedNotes = notes.sort((a, b) => b.updatedAt - a.updatedAt)
+    const sortedNotes = notes.sort((a, b) => b.updated - a.updated)
 
     React.useEffect(() => {
         const unSubscribe = onSnapshot(notesCollection, (snapshot) => {
@@ -35,8 +33,20 @@ export default function App() {
         }
     }, [notes])
 
+    React.useEffect(() => {
+        currentNote && setTempNoteText(currentNote.body)
+    }, [currentNote])
+
+    React.useEffect(() => {
+        const timeoutId = setTimeout(() => {
+            if (tempNoteText !== currentNote.body) {
+                updateNote(tempNoteText)
+            }
+        }, 500)
+        return () => clearTimeout(timeoutId)
+    } ,[tempNoteText])
+
     async function createNewNote() {
-        // const current = new Date().toLocaleString()
         const current =  Date.now()
         const newNote = {
             body: "# Type your markdown note's title here",
@@ -49,11 +59,12 @@ export default function App() {
     
     async function updateNote(text) {
         // Update current note and put it at the top
-        const current =  Date.now()
-        // const current = new Date().toLocaleString()
-
         const docRef = doc(db, "notes", currentNoteId)
-        await setDoc(docRef, {body: text, updated: current}, {merge: true})
+        const current =  Date.now()
+        await setDoc(
+            docRef, 
+            {body: text, updated: current}, 
+            {merge: true})
     }
     
     async function deleteNote(noteId) {
@@ -79,9 +90,13 @@ export default function App() {
                     deleteNote={deleteNote}
                 />
                 <Editor 
+                    tempNoteText={tempNoteText} 
+                    setTempNoteText={setTempNoteText} 
+                />
+                {/* <Editor 
                     currentNote={currentNote} 
                     updateNote={updateNote} 
-                />
+                /> */}
             </Split>
             :
             <div className="no-notes">
